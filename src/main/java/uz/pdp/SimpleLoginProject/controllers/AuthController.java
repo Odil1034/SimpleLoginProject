@@ -1,9 +1,8 @@
 package uz.pdp.SimpleLoginProject.controllers;
 
-import org.springframework.http.HttpRequest;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
-import uz.pdp.SimpleLoginProject.dtos.ErrorBodyDto;
 import uz.pdp.SimpleLoginProject.dtos.LoginDto;
 import uz.pdp.SimpleLoginProject.dtos.UserCreateDto;
 import uz.pdp.SimpleLoginProject.exceptions.UsernameOrPasswordWrong;
@@ -15,17 +14,20 @@ import uz.pdp.SimpleLoginProject.repository.UserRepository;
 public class AuthController {
 
     private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
 
-    public AuthController(UserRepository userRepository) {
+    public AuthController(UserRepository userRepository, PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
+        this.passwordEncoder = passwordEncoder;
     }
 
     @PostMapping("/register")
     public User register(@RequestBody UserCreateDto userDto) {
+        String encode = passwordEncoder.encode(userDto.password());
         User newUser = User.builder()
                 .fullName(userDto.fullName())
                 .username(userDto.username())
-                .password(userDto.password())
+                .password(encode)
                 .build();
         return userRepository.save(newUser);
     }
