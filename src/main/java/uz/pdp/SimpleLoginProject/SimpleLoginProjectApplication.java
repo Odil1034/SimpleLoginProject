@@ -38,6 +38,6 @@ public class SimpleLoginProjectApplication {
 
     @Bean
     public AuditorAware<Integer> auditorAware() {
-        return () -> Optional.of(securityUtils.getUser());
+    return () -> Optional.of(securityUtils.getUserId());
     }
 }

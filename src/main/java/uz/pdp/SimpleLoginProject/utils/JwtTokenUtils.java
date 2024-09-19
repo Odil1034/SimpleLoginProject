@@ -16,8 +16,8 @@ import java.util.Map;
 @Component
 public class JwtTokenUtils {
 
+    String SECRET_KEY = "02e40a241239569781c87f5b727cbbbc7eede049967df1eb6bf38f253f1b3bda";
     private static final Long EXPIRED_DATE = System.currentTimeMillis() + 60 * 10 * 1000;
-    String SECRET_KEY = "ajfdligjeor;ijgsadlkgndfokangi;orgldfkvn.oerijw;otfasdfasfsad";
 
     private SecretKey getKeysHs256() {
         return Keys.hmacShaKeyFor(SECRET_KEY.getBytes());

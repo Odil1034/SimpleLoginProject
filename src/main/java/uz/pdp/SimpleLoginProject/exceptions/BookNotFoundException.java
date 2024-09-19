@@ -1,7 +1,9 @@
 package uz.pdp.SimpleLoginProject.exceptions;
 
+import lombok.Getter;
 import org.springframework.http.HttpStatus;
 
+@Getter
 public class BookNotFoundException extends RuntimeException {
 
     private final HttpStatus status;
@@ -9,4 +11,5 @@ public class BookNotFoundException extends RuntimeException {
         super(message);
         this.status = status;
     }
+
 }

@@ -1,51 +1,83 @@
 package uz.pdp.SimpleLoginProject.config;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.ObjectWriter;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Lazy;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.access.AccessDeniedHandler;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-import uz.pdp.SimpleLoginProject.service.CustomUserDetailsService;
+import uz.pdp.SimpleLoginProject.dtos.ErrorBodyDto;
+
+import java.io.PrintWriter;
+import java.time.LocalDateTime;
 
 @Configuration
 @EnableMethodSecurity
 public class SecurityConfig {
 
-    private final CustomUserDetailsService customUserDetailsService;
+    private final ObjectMapper objectMapper;
+    private final UserDetailsService userDetailsService;
+    private final AccessDeniedHandler accessDeniedHandler;
+    private final AuthenticationEntryPoint authenticationEntryPoint;
+    private final JwtRequestFilter jwtRequestFilter;
 
     private static final String[] WHITE_LIST = {
-            "/auth/register",
-            "/auth/authentication",
-            "/book/**",
+            "/auth/**",
+            "/error",
+
+            "/api-docs",
+            "/swagger-ui.html",
+            "/swagger-ui/**"
     };
 
-    public SecurityConfig(CustomUserDetailsService customUserDetailsService) {
-        this.customUserDetailsService = customUserDetailsService;
+    @Lazy
+    public SecurityConfig(ObjectMapper objectMapper,
+                          @Qualifier("customUserDetailsService") UserDetailsService userDetailsService,
+                          AccessDeniedHandler accessDeniedHandler,
+                          AuthenticationEntryPoint authenticationEntryPoint,
+                          JwtRequestFilter jwtRequestFilter) {
+        this.objectMapper = objectMapper;
+        this.userDetailsService = userDetailsService;
+        this.accessDeniedHandler = accessDeniedHandler;
+        this.authenticationEntryPoint = authenticationEntryPoint;
+        this.jwtRequestFilter = jwtRequestFilter;
     }
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http, JwtRequestFilter jwtRequestFilter) throws Exception {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http.csrf(AbstractHttpConfigurer::disable);
 
         http.authorizeHttpRequests(auth -> auth
                 .requestMatchers(WHITE_LIST).permitAll()
                 .anyRequest().authenticated());
 
+        http.userDetailsService(userDetailsService);
+
+        http.exceptionHandling((handler) -> {
+            handler.accessDeniedHandler(accessDeniedHandler);
+            handler.authenticationEntryPoint(authenticationEntryPoint);
+        });
 
         http.addFilterBefore(jwtRequestFilter, UsernamePasswordAuthenticationFilter.class);
 
-        http.sessionManagement(session->{
+        http.sessionManagement(session -> {
             session.sessionCreationPolicy(SessionCreationPolicy.STATELESS);
         });
 
-        http.userDetailsService(customUserDetailsService);
         return http.build();
     }
 
@@ -55,7 +87,44 @@ public class SecurityConfig {
     }
 
     @Bean
-    public PasswordEncoder passwordEncoder(){
+    public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
+
+    @Bean
+    public AccessDeniedHandler accessDeniedHandler() {
+        return (request, response, exception) -> {
+            ErrorBodyDto bodyDto = new ErrorBodyDto(
+                    HttpStatus.FORBIDDEN.value(),
+                    request.getRequestURI(),
+                    request.getRequestURL().toString(),
+                    exception.getClass().toString(),
+                    exception.getMessage(),
+                    LocalDateTime.now());
+            response.setStatus(403);
+            PrintWriter writer = response.getWriter();
+            ObjectWriter objectWriter = objectMapper.writer();
+            objectWriter.writeValue(writer, bodyDto);
+
+        };
+    }
+
+    @Bean
+    public AuthenticationEntryPoint authenticationEntryPoint() {
+        return (request, response, exception) -> {
+            ErrorBodyDto bodyDto = new ErrorBodyDto(
+                    HttpStatus.UNAUTHORIZED.value(),
+                    request.getRequestURI(),
+                    request.getRequestURL().toString(),
+                    exception.getClass().toString(),
+                    exception.getMessage(),
+                    LocalDateTime.now());
+            response.setStatus(401);
+            PrintWriter writer = response.getWriter();
+            ObjectWriter objectWriter = objectMapper.writer();
+            objectWriter.writeValue(writer, bodyDto);
+
+        };
+    }
+
 }

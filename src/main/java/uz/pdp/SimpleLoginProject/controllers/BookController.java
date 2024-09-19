@@ -1,5 +1,6 @@
 package uz.pdp.SimpleLoginProject.controllers;
 
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -16,6 +17,7 @@ import java.util.Optional;
 
 @RestController
 @RequestMapping("/book")
+@SecurityRequirement(name = "bearerAuth")
 public class BookController {
 
     private final BookRepository bookRepository;
